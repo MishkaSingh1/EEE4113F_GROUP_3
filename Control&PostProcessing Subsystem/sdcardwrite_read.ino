@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include <SD.h>
 
-#define SD_CS_PIN PA4   // chip select pin — change if wired differently
+#define SD_CS_PIN PA4   // chip select pin
 #define LED_PIN PC13   // onboard LED (Blackpill)
 
 void setup() {
@@ -21,7 +21,7 @@ void setup() {
         delay(1000);
         digitalWrite(LED_PIN, LOW);
 
-        while (1);      // halt — no point continuing
+        while (1);     
     }
 
     Serial.println("SD card ready.");
@@ -64,5 +64,5 @@ void setup() {
 }
 
 void loop() {
-    // nothing here — just demonstrating setup
+    
 }
