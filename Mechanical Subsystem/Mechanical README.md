@@ -15,5 +15,5 @@ Structures:
   * Inner ledge
   * Shelves
 * Brush and shutter Extension
-  * Mainn extension
+  * Main extension
   * Half Brush extension
