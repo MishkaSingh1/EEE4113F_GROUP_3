@@ -15,14 +15,15 @@
 #include <INA226_WE.h>
 #include "STM32LowPower.h"
 #include "STM32RTC.h"
+#include <AccelStepper.h>
 
 // --- Pin Definitions ---
 #define SENSOR_PIN         PA10   // DS18B20 data pin
 #define SD_CS_PIN          PA4    // SD card chip select
 #define LED_PIN            PC13   // onboard LED (active LOW on Black Pill)
 #define LED_SENSE_PIN      PA8    // signal to enable sensing LED
-#define SHUTDOWN_PIN       PA11   // shutdown signal
-#define POWER_RAIL_PIN     PA15   // controls external power rails (low power mode pin)
+
+#define POWER_RAIL_PIN     PB15   // controls external power rails (low power mode pin)
 #define ADC_PIN            PA0    // photodiode input
 #define INA226_ADDR        0x40
 #define SLEEP_HOURS        12
@@ -31,11 +32,17 @@
 #define MAX_TEMP           40.0f  // shutdown above this temperature
 #define INA_ALERT_PIN      PB0  // connect INA226 ALERT pin here + 10k pullup to 3V3
 #define SLEEP_SECONDS 10
+//(mapped to DRV8825)
+#define STEP_PIN  PB12
+#define DIR_PIN   PB13
+#define SLP_PIN PB14  // DRV8825 SLP pin - LOW = sleep, HIGH = active
+
 
 OneWire oneWire(SENSOR_PIN);
 DallasTemperature tempSensor(&oneWire);
 INA226_WE ina226(INA226_ADDR);
 STM32RTC& rtc = STM32RTC::getInstance();
+AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
 
 bool sdReady  = false;
 bool wiperFlag=false;
@@ -52,6 +59,14 @@ float baselineIntensity =0.0f;
 
 float voltage =0.0f;
 float current=0.0f;
+
+// Motor Configuration
+const float stepsPerRevolution = 200.0;
+int microstepSetting = 1;
+
+float convert_rotational_position_to_steps(float rotations) {
+  return rotations * stepsPerRevolution * microstepSetting;
+}
 
 void goToSleep();  // forward declaration
 
@@ -229,7 +244,7 @@ void batteryRead(){
 }
 
 void shutdown() {
-    shutterFlag = true;
+    shutter();
     logMsg("Shutting down permanently.");
     ina226.readAndClearFlags();
     digitalWrite(SHUTDOWN_PIN, HIGH);
@@ -270,6 +285,39 @@ void checkINA() {
     inaAlert = false;
 }
 
+void wiper() {
+  // Wake up driver
+  digitalWrite(SLP_PIN, HIGH);
+  delay(2); // DRV8825 needs 1.7ms to wake up before stepping
+
+  // Move forward 90 degrees - 0.25 rotation
+  stepper.moveTo(convert_rotational_position_to_steps(0.25));
+  while (stepper.distanceToGo() != 0) stepper.run();
+  delay(3000);
+
+  // Move 90 degrees anticlockwise - move back to zero position
+  stepper.moveTo(convert_rotational_position_to_steps(0));
+  while (stepper.distanceToGo() != 0) stepper.run();
+  delay(3000);
+
+  // Go back to sleep
+  digitalWrite(SLP_PIN, LOW);
+}
+
+void shutter() {
+  // Wake up driver
+  digitalWrite(SLP_PIN, HIGH);
+  delay(2); // DRV8825 needs 1.7ms to wake up before stepping
+
+  // Move forward 90 degrees - 0.25 rotation
+  stepper.moveTo(convert_rotational_position_to_steps(0.25));
+  while (stepper.distanceToGo() != 0) stepper.run();
+  delay(3000);
+
+  // Go back to sleep
+  digitalWrite(SLP_PIN, LOW);
+}
+
 void goToSleep() {
     wiperFlag = false;
     setNextAlarm();
@@ -291,6 +339,28 @@ void setup() {
     
    // Serial.println("Serial ready.");
   //  while (!Serial); 
+
+      // Initialise relevant GPIO pins on STM32 board as outputs
+    pinMode(STEP_PIN,  OUTPUT);
+    pinMode(DIR_PIN,   OUTPUT);
+    pinMode(SLP_PIN, OUTPUT);
+
+    // All pins initialised to logic LOW
+    digitalWrite(STEP_PIN,  LOW);
+    digitalWrite(DIR_PIN,   LOW);
+    digitalWrite(SLP_PIN, LOW);   // START in sleep mode
+
+    float MaxRPM = 300.0;
+    float Max_Speed_StepsPerSec = microstepSetting * stepsPerRevolution * MaxRPM / 60.0;
+    stepper.setMaxSpeed(Max_Speed_StepsPerSec);
+
+    float AccelRPMperSec = 500.0;
+    float Accel_StepsPerSec2 = microstepSetting * stepsPerRevolution * AccelRPMperSec / 60.0;
+    stepper.setAcceleration(Accel_StepsPerSec2);
+
+    stepper.setCurrentPosition(0);
+
+
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, HIGH);  // starts off (sleeping during baseline)
     pinMode(ADC_PIN, INPUT_ANALOG);
@@ -314,7 +384,7 @@ void setup() {
 
     logMsg("All inits done.");
     logMsg("--- Starting ---");
-
+    digitalWrite(POWER_RAIL_PIN, HIGH); 
    // pinMode(LED_PIN, OUTPUT);
     //digitalWrite(LED_PIN, LOW); //led on in normal power mode
   //  Serial.println("\n--- Starting ---\n");
@@ -331,6 +401,7 @@ void setup() {
 }
 
 void loop() {
+    digitalWrite(POWER_RAIL_PIN, HIGH); 
     checkINA(); //check levels-> for case if alert triggered
 
     if (!alarmFired) return; //alarm not fired -do nothing
@@ -338,6 +409,7 @@ void loop() {
     digitalWrite(LED_PIN, LOW);  
     logMsg("Woke up!");
    // Serial.flush();
+    
 
     //--------------SAMPLING WINDOW--------------------------------
    // delay(200);
@@ -365,7 +437,8 @@ void loop() {
         //---file write------
         writeSD(avgIntensity,baselineIntensity,tempC,voltage,current);
         //----clean glass to get baseline----
-        wiperFlag =true;
+        wiper();
+        delay(7000);
         baselineIntensity=ADCRead(); //get baseline to be used for next sample
         //---back to low power mode-----
         logMsg("Baseline updated. Going to sleep.");
