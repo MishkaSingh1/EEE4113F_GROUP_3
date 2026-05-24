@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OST Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+  /* Reset and base styles */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: #8a9eff;
+    color: #d6dde8;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top navigation bar */
+  .topbar {
+    background: #000000;
+    border-bottom: 1px solid #2c374d;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .topbar h1 {
+    font-size: 18px;
+    font-weight: normal;
+    color: white;
+    letter-spacing: 1px;
+  }
+
+  .topbar span {
+    font-size: 12px;
+    color: #5ba5ff;
+  }
+
+  /* Main layout */
+  .body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    background: #000000;
+    border-right: 1px solid #2c374d;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-block {
+    padding: 16px;
+    border-bottom: 1px solid #2c374d;
+  }
+
+  .sidebar-block h3 {
+    font-size: 12px;
+    font-weight: normal;
+    color: #9fb0c5;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  /* File upload area */
+  .upload-area {
+    border: none;
+    padding: 18px 10px;
+    text-align: center;
+    cursor: pointer;
+    background: #2c374d;
+    transition: background 0.2s;
+    font-size: 12px;
+    color: #9fb0c5;
+  }
+
+  .upload-area:hover {
+    background: #1a2840;
+  }
+
+  .upload-area .icon {
+    font-size: 22px;
+    margin-bottom: 6px;
+    opacity: 0.6;
+  }
+
+  #status {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #76a7ff;
+    min-height: 14px;
+  }
+
+  /* Form inputs */
+  .param-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .param-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .param-row label {
+    font-size: 11px;
+    color: #9fb0c5;
+  }
+
+  .param-row input {
+    padding: 7px 8px;
+    border: 1px solid #34445f;
+    background: #111927;
+    color: white;
+    font-size: 12px;
+    width: 100%;
+    outline: none;
+  }
+
+  .param-row input:focus {
+    border-color: #466183;
+  }
+
+  /* Radio buttons */
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 6px;
+    font-size: 12px;
+    color: #9fb0c5;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .radio-group label:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .radio-group label:has(input:checked) {
+    color: #76a7ff;
+  }
+
+  .radio-group input[type=radio] {
+    accent-color: #76a7ff;
+  }
+
+  /* Buttons */
+  .btn {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #466183;
+    background: #2d4f7c;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+    margin-bottom: 8px;
+  }
+
+  .btn:last-child {
+    margin-bottom: 0;
+  }
+
+  .btn:hover {
+    background: #3b679e;
+  }
+
+  .btn.secondary {
+    background: #1a2434;
+    border-color: #2c374d;
+  }
+
+  .btn.secondary:hover {
+    background: #222f42;
+  }
+
+  /* Main content area */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  /* Statistics cards */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .stat-card {
+    background: #222;
+    border: 1px solid #2c374d;
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .stat-card h2 {
+    font-size: 11px;
+    font-weight: normal;
+    color: #9fb0c5;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .stat-card p {
+    font-size: 22px;
+    color: white;
+    font-weight: normal;
+  }
+
+  .stat-card .unit {
+    font-size: 11px;
+    color: #9fb0c5;
+    margin-top: 3px;
+  }
+
+  /* Chart */
+  .chart-wrap {
+    background: #222;
+    border: 1px solid #2c374d;
+    padding: 14px;
+    flex: 1;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #mainChart {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+  }
+
+  /* Table */
+  .table-wrap {
+    background: #5a6fb8;
+    border: 1px solid #4a5da8;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th {
+    background: #4a5da8;
+    color: white;
+    padding: 8px 10px;
+    position: sticky;
+    top: 0;
+    font-weight: normal;
+    text-align: center;
+    font-size: 11px;
+  }
+
+  td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #3a4d98;
+    text-align: center;
+    color: white;
+  }
+
+  tr:nth-child(even) td {
+    background: #4a5da8;
+  }
+
+  tr:hover td {
+    background: #3a4d98;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2c374d;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal {
+    background: #222;
+    border: 1px solid #2c374d;
+    padding: 24px;
+    width: 550px;
+    max-width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    color: #d6dde8;
+    position: relative;
+  }
+
+  .modal h2 {
+    font-size: 14px;
+    font-weight: normal;
+    color: white;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #2c374d;
+    padding-bottom: 10px;
+  }
+
+  .modal p {
+    font-size: 12px;
+    color: #9fb0c5;
+    line-height: 1.8;
+    margin-bottom: 10px;
+  }
+
+  .modal strong {
+    color: #76a7ff;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: #9fb0c5;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    width: auto;
+    margin: 0;
+  }
+
+  .modal-close:hover {
+    color: white;
+  }
+
+  /* Plotly hover tooltip styling */
+  .hoverlayer text {
+    color: white !important;
+    fill: white !important;
+  }
+
+  .hovertext text {
+    fill: white !important;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Optical Sediment Trap Dashboard</h1>
+  
+</div>
+
+<div class="body">
+  <div class="sidebar">
+    <div class="sidebar-block">
+      <h3>CSV Text File</h3>
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()"
+        ondragover="event.preventDefault()" ondrop="handleDrop(event)">
+        <div class="icon">📁</div>
+        Drop text-file or click to browse
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.txt" style="display:none" onchange="loadFile(event)">
+      <div id="status"></div>
+    </div>
+
+    <div class="sidebar-block">
+      <h3>Flux Equation Parameters</h3>
+      <div class="param-row">
+        <label>a<sup>1</sup> value</label>
+        <input type="number" id="a1Input" value="0.94" step="0.01" lang="en-US">
+      </div>
+      <div class="param-row">
+        <label>a<sup>2</sup> value</label>
+        <input type="number" id="a2Input" value="3.4" step="0.01" lang="en-US">
+      </div>
+      <button class="btn" style="margin-top:12px" onclick="processData()">Process Data</button>
+    </div>
+
+    <div class="sidebar-block">
+      <h3>Parameter to Display</h3>
+      <div class="radio-group">
+        <label><input type="radio" name="g" id="showAttn" checked> Attenuation</label>
+        <label><input type="radio" name="g" id="showFlux"> POC Flux</label>
+        <label><input type="radio" name="g" id="showTemp"> Temperature</label>
+        <label><input type="radio" name="g" id="showVoltage"> Battery Voltage</label>
+        <label><input type="radio" name="g" id="showCurrent"> Battery Current</label>
+      </div>
+    </div>
+
+    <div class="sidebar-block">
+      <button class="btn secondary" onclick="saveTableData()">Export CSV</button>
+    </div>
+    <div style="margin-top:auto; padding:16px; border-top:1px solid #2c374d;">
+      <button class="btn secondary" style="margin-bottom:0" onclick="document.getElementById('helpModal').style.display='flex'">Help</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stats-row">
+      <div class="stat-card">
+        <h2 id="statMinLabel">Min</h2>
+        <p id="statMin">—</p>
+        <div class="unit" id="statMinUnit"></div>
+      </div>
+      <div class="stat-card">
+        <h2 id="statAvgLabel">Average</h2>
+        <p id="statAvg">—</p>
+        <div class="unit" id="statAvgUnit"></div>
+      </div>
+      <div class="stat-card">
+        <h2 id="statMaxLabel">Max</h2>
+        <p id="statMax">—</p>
+        <div class="unit" id="statMaxUnit"></div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div id="mainChart"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="attenuationTable">
+        <thead>
+          <tr>
+            <th>Time</th><th>Transmittance</th><th>Attenuation</th>
+            <th>POC Flux (mg C m⁻² d⁻¹)</th><th>Temperature (°C)</th><th>Voltage (V)</th><th>Current (mA)</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// Application state
+let rawData = [];
+let storedData = {};
+
+// Chart configuration
+const COLORS = {
+  showAttn: '#76a8ff',
+  showFlux: '#00c9a7',
+  showTemp: '#ffd166',
+  showVoltage: '#ff6b4a',
+  showCurrent: '#c77dff'
+};
+
+const LABELS = {
+  showAttn: 'Attenuation',
+  showFlux: 'POC Flux',
+  showTemp: 'Temperature',
+  showVoltage: 'Battery Voltage',
+  showCurrent: 'Battery Current'
+};
+
+const UNITS = {
+  showAttn: '',
+  showFlux: 'mg C m⁻² d⁻¹',
+  showTemp: '°C',
+  showVoltage: 'V',
+  showCurrent: 'mA'
+};
+
+const KEYS = {
+  showAttn: 'attenuance',
+  showFlux: 'POC',
+  showTemp: 'temperature',
+  showVoltage: 'batteryVoltage',
+  showCurrent: 'batteryCurrent'
+};
+
+// Initialize event listeners
+document.getElementById('fileInput').addEventListener('change', loadFile);
+document.querySelectorAll('input[type=radio]').forEach(radio => {
+  radio.addEventListener('change', plotGraph);
+});
+// Force period decimal separator in numeric inputs
+['a1Input', 'a2Input'].forEach(id => {
+  const input = document.getElementById(id);
+  input.addEventListener('change', () => {
+    input.value = input.value.replace(',', '.');
+  });
+});
+// Keep chart sized correctly on window resize
+window.addEventListener('resize', () => {
+  if (storedData.time) plotGraph();
+});
+
+// Load CSV file
+function loadFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    rawData = e.target.result.trim().split(/\r?\n/);
+    const rowCount = Math.max(0, rawData.length - 1);
+    document.getElementById('status').textContent = `${rowCount} rows loaded`;
+  };
+  
+  reader.readAsText(file);
+}
+
+// Handle drag and drop
+function handleDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  
+  if (!file) return;
+  
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  document.getElementById('fileInput').files = dataTransfer.files;
+  
+  loadFile({ target: document.getElementById('fileInput') });
+}
+
+// Process and validate data
+function processData() {
+  if (!rawData.length) {
+    document.getElementById('status').textContent = 'No file loaded.';
+    return;
+  }
+
+  // Validate file format
+  if (rawData.length < 2) {
+    showError('File must contain at least a header row and one data row.');
+    return;
+  }
+
+  const header = rawData[0].split(',').map(h => h.trim());
+  if (header.length < 6) {
+    showError('File must have at least 6 columns (comma-separated): timestamp, baseline, sample, temperature, voltage, current');
+    return;
+  }
+
+  // Initialize data arrays
+  let time = [];
+  let attenuance = [];
+  let transmittance = [];
+  let temperature = [];
+  let batteryVoltage = [];
+  let batteryCurrent = [];
+  let POC = [];
+
+  const a1 = parseFloat(document.getElementById('a1Input').value.replace(',', '.'));
+  const a2 = parseFloat(document.getElementById('a2Input').value.replace(',', '.'));
+
+  // Parse and validate data rows
+  for (let i = 1; i < rawData.length; i++) {
+    if (!rawData[i].trim()) continue;
+    
+    const row = rawData[i].split(',');
+
+    if (row.length < 6) {
+      showError(`Row ${i + 1} has fewer than 6 columns. Expected: timestamp, baseline, sample, temperature, voltage, current`);
+      return;
+    }
+
+    const t = row[0]?.trim();
+    const baseline = parseFloat(row[1]);
+    const sample = parseFloat(row[2]);
+    const temp = parseFloat(row[3]);
+    const voltage = parseFloat(row[4]);
+    const current = parseFloat(row[5]);
+
+    // Validate each field
+    if (!t) {
+      showError(`Row ${i + 1}: timestamp is missing or empty.`);
+      return;
+    }
+    if (isNaN(baseline)) {
+      showError(`Row ${i + 1}: baseline value is not a valid number.`);
+      return;
+    }
+    if (isNaN(sample)) {
+      showError(`Row ${i + 1}: sample value is not a valid number.`);
+      return;
+    }
+    if (isNaN(temp)) {
+      showError(`Row ${i + 1}: temperature value is not a valid number.`);
+      return;
+    }
+    if (isNaN(voltage)) {
+      showError(`Row ${i + 1}: voltage value is not a valid number.`);
+      return;
+    }
+    if (isNaN(current)) {
+      showError(`Row ${i + 1}: current value is not a valid number.`);
+      return;
+    }
+    if (baseline === 0) {
+      showError(`Row ${i + 1}: baseline cannot be zero.`);
+      return;
+    }
+
+    // Calculate transmittance and attenuance
+    const T = sample / baseline;
+    const atn = -Math.log(T);
+    
+    time.push(t);
+    transmittance.push(T);
+    attenuance.push(atn);
+    temperature.push(temp);
+    batteryVoltage.push(voltage);
+    batteryCurrent.push(current);
+  }
+
+  if (time.length === 0) {
+    showError('No valid data rows found.');
+    return;
+  }
+
+  // Calculate POC Flux: first compute attenuation flux (Δattenuation / Δtime), then apply power law
+  for (let i = 1; i < attenuance.length; i++) {
+    const t1 = new Date(time[i - 1]).getTime() / 1000; // Convert to seconds
+    const t2 = new Date(time[i]).getTime() / 1000;
+    const deltaTime = t2 - t1;
+    const deltaA = attenuance[i] - attenuance[i - 1];
+    const attnFlux = deltaTime > 0 ? deltaA / deltaTime : 0;
+    const flux = attnFlux > 0 ? Math.pow(10, a2) * Math.pow(attnFlux, a1) : 0;
+    POC.push(flux);
+  }
+  POC.unshift(0);
+
+  // Store processed data
+  storedData = {
+    time,
+    attenuance,
+    transmittance,
+    POC,
+    temperature,
+    batteryVoltage,
+    batteryCurrent
+  };
+
+  // Update UI
+  renderTable(time, transmittance, attenuance, POC, temperature, batteryVoltage, batteryCurrent);
+  plotGraph();
+
+  document.getElementById('status').textContent = `${attenuance.length} records processed`;
+}
+
+// Show validation error modal
+function showError(message) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.style.display = 'flex';
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.remove();
+  };
+
+  modal.innerHTML = `
+    <div class="modal">
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+      <h2>Data Validation Error</h2>
+      <p>${message}</p>
+      <p style="margin-top:16px; font-size:11px; color:#9fb0c5;">Expected format: <strong>timestamp, baseline, sample, temperature_C, voltage_V, current_mA</strong></p>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Update statistics cards based on currently selected parameter
+function updateStats() {
+  if (!storedData.time) return;
+
+  const selectedId = document.querySelector('input[name="g"]:checked').id;
+  const data = storedData[KEYS[selectedId]];
+  const label = LABELS[selectedId];
+  const unit = UNITS[selectedId];
+
+  const valid = data.filter(v => v !== null && !isNaN(v));
+  if (!valid.length) return;
+
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
+
+  const decimals = (selectedId === 'showFlux') ? 3 : 4;
+
+  document.getElementById('statMinLabel').textContent  = `Min ${label}`;
+  document.getElementById('statAvgLabel').textContent  = `Avg ${label}`;
+  document.getElementById('statMaxLabel').textContent  = `Max ${label}`;
+
+  document.getElementById('statMin').textContent = min.toFixed(decimals);
+  document.getElementById('statAvg').textContent = avg.toFixed(decimals);
+  document.getElementById('statMax').textContent = max.toFixed(decimals);
+
+  document.getElementById('statMinUnit').textContent = unit;
+  document.getElementById('statAvgUnit').textContent = unit;
+  document.getElementById('statMaxUnit').textContent = unit;
+}
+
+// Render data table
+function renderTable(time, transmittance, attenuance, POC, temperature, voltage, current) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  for (let i = 0; i < time.length; i++) {
+    const row = document.createElement('tr');
+    
+    const tempStr = isNaN(temperature[i]) ? '—' : temperature[i].toFixed(2);
+    const voltStr = isNaN(voltage[i]) ? '—' : voltage[i].toFixed(3);
+    const currStr = isNaN(current[i]) ? '—' : current[i].toFixed(3);
+
+    row.innerHTML = `
+      <td>${time[i]}</td>
+      <td>${transmittance[i].toFixed(4)}</td>
+      <td>${attenuance[i].toFixed(4)}</td>
+      <td>${POC[i].toFixed(3)}</td>
+      <td>${tempStr}</td>
+      <td>${voltStr}</td>
+      <td>${currStr}</td>
+    `;
+    tbody.appendChild(row);
+  }
+}
+
+// Plot graph using Plotly
+function plotGraph() {
+  if (!storedData.time) return;
+
+  const selectedId = document.querySelector('input[name="g"]:checked').id;
+  const yData = storedData[KEYS[selectedId]];
+  const yLabel = LABELS[selectedId];
+  const yUnit = UNITS[selectedId];
+  const lineColor = COLORS[selectedId];
+  
+  console.log('Selected:', selectedId, 'Label:', yLabel, 'First 5 values:', yData.slice(0, 5));
+
+  const trace = {
+    x: storedData.time,
+    y: yData,
+    type: 'scatter',
+    mode: 'lines+markers',
+    name: yLabel,
+    line: {
+      color: lineColor,
+      width: 2
+    },
+    marker: {
+      size: storedData.time.length > 50 ? 4 : 6,
+      color: lineColor
+    }
+  };
+
+
+
+  const yAxisTitle = yUnit ? yUnit : '';
+
+  const layout = {
+    title: {
+      text: yUnit ? `${yLabel} (${yUnit})` : yLabel,
+      font: { size: 16, color: 'white', family: 'system-ui' }
+    },
+    xaxis: {
+      title: 'Time',
+      tickfont: { size: 10, color: '#9fb0c5' },
+      gridcolor: '#283548',
+      linecolor: '#2c374d'
+    },
+    yaxis: {
+      title: yAxisTitle,
+      tickfont: { size: 10, color: '#9fb0c5' },
+      titlefont: { size: 12, color: '#9fb0c5' },
+      gridcolor: '#283548',
+      linecolor: '#2c374d'
+    },
+    plot_bgcolor: '#111927',
+    paper_bgcolor: '#222',
+    margin: { l: 60, r: 30, t: 60, b: 50 },
+    showlegend: false,
+    hovermode: 'x unified',
+    autosize: true,
+  };
+
+  const config = {
+    responsive: true,
+    displayModeBar: false
+  };
+
+  Plotly.newPlot('mainChart', [trace], layout, config);
+  updateStats();
+}
+
+// Export table data as CSV
+function saveTableData() {
+  if (!storedData.time) return;
+
+  const { time, transmittance, attenuance, POC, temperature, batteryVoltage, batteryCurrent } = storedData;
+
+  let csv = 'Time,Transmittance,Attenuance,POC Flux,Temperature,Voltage,Current\n';
+
+  for (let i = 0; i < time.length; i++) {
+    const row = [
+      time[i],
+      transmittance[i].toFixed(4),
+      attenuance[i].toFixed(4),
+      POC[i].toFixed(3),
+      temperature[i],
+      batteryVoltage[i],
+      batteryCurrent[i]
+    ];
+    csv += row.join(',') + '\n';
+  }
+
+  // Trigger download
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'ost_processed.csv';
+  link.click();
+}
+</script>
+<div class="modal-overlay" id="helpModal" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('helpModal').style.display='none'">✕</button>
+    <h2>How to Use</h2>
+    <p><strong>1. Upload</strong> — Either drag and drop your text file into the shaded area or click on the drop area block and select your file. The expected format is as follows:<br> <strong>timestamp, baseline, sample, temperature_C, voltage_V, current_mA</strong></p>
+    <p><strong>2. Parameters</strong> — The default flux equation parameters are a1=0.94, a2=3.4 (based on Estapa et al). If necessary they can be changed using the two entry boxes.</p>
+    <p><strong>3. Compute Data</strong> — Click the Process Data button after uploading your text file. Processed data will be shown on the graphs.</p>
+    <p><strong>4. Graph Display</strong> — Select the desired parameter to display on the graph by clicking the round button next to its name.</p>
+    <p><strong>5. Export Results</strong> — Save the processed table data as a CSV file.</p>
+    </div>
+</div>
+</body>
+</html>
