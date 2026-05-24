@@ -643,7 +643,7 @@ function processData() {
       return;
     }
 
-    // Calculate transmittance and attenuance
+    // Calculate transmittance and attenuation
     const T = sample / baseline;
     const atn = -Math.log(T);
     
@@ -660,7 +660,7 @@ function processData() {
     return;
   }
 
-  // Calculate POC Flux: first compute attenuation flux (Δattenuation / Δtime), then apply power law
+  // Calculate POC Flux: first compute attenuation flux then apply formula
   for (let i = 1; i < attenuance.length; i++) {
     const t1 = new Date(time[i - 1]).getTime() / 1000; // Convert to seconds
     const t2 = new Date(time[i]).getTime() / 1000;
@@ -690,7 +690,7 @@ function processData() {
   document.getElementById('status').textContent = `${attenuance.length} records processed`;
 }
 
-// Show validation error modal
+// Show validation error block
 function showError(message) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
@@ -710,7 +710,7 @@ function showError(message) {
   document.body.appendChild(modal);
 }
 
-// Update statistics cards based on currently selected parameter
+// Update statistics blocks based on currently selected parameter
 function updateStats() {
   if (!storedData.time) return;
 
@@ -854,7 +854,7 @@ function saveTableData() {
     csv += row.join(',') + '\n';
   }
 
-  // Trigger download
+  // download
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
