@@ -322,8 +322,8 @@ void goToSleep() {
     wiperFlag = false;
     setNextAlarm();
     alarmFired = false;
-    inaAlert = false;                  // ← clear flag
-    ina226.readAndClearFlags();        // ← clear latch so pin goes HIGH
+    inaAlert = false;                  // clear flag
+    ina226.readAndClearFlags();        //clear latch so pin goes HIGH
     digitalWrite(LED_PIN, HIGH);
     digitalWrite(POWER_RAIL_PIN, LOW);
     logMsg("Going to sleep...");
