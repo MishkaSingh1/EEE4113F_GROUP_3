@@ -52,12 +52,10 @@ void setup() {
 }
 
 void loop() {
-    if (!alarmFired) return;   // ignore spurious wakes
+    if (!alarmFired) return;   // ignore random wakes
 
     Serial.println("Woke up!");
     Serial.flush();
-
-    // do your work here
 
     setNextAlarm();
     goToSleep();
